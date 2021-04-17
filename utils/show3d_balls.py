@@ -158,7 +158,3 @@ def showpoints(xyz,c_gt=None, c_pred = None, waittime=0,
         if waittime!=0:
             break
     return cmd
-
-if __name__ == '__main__':
-    np.random.seed(100)
-    showpoints(np.random.randn(2500, 3))
