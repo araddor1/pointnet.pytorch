@@ -9,4 +9,6 @@ cls/
 seg/
 dataset/
 *.egg-info/
+lightning_solution/lightning_logs/*
 *.so
+*_pycache_*
