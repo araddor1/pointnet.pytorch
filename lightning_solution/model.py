@@ -174,6 +174,7 @@ class PointNetCls(pl.LightningModule):
 
 
     def training_step(self, batch, batch_idx):
+        
         points, target = batch
         target = target[:, 0]
         if(self.show_points_func is not None and batch_idx % 20 == 0):
@@ -183,6 +184,7 @@ class PointNetCls(pl.LightningModule):
         loss = F.nll_loss(pred, target)
         if self.feature_transform is not None:
             loss += self.feature_transform(trans_feat) * 0.001
+        self.log('train_loss', loss)
         return loss
 
     def test_step(self, batch, batch_idx):
@@ -197,8 +199,8 @@ class PointNetCls(pl.LightningModule):
         correct = pred_choice.eq(target.data).sum()
         total_correct += correct.item()
         total_testset += points.size()[0]
-        loss = total_correct / float(total_testset)
-        print("final accuracy {}".format(loss))
+        loss = 1 -  total_correct / float(total_testset)
+        self.log('test_loss', loss)
         return loss
 
 

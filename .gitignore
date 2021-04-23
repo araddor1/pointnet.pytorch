@@ -10,5 +10,6 @@ seg/
 dataset/
 *.egg-info/
 lightning_solution/lightning_logs/*
+lightning_solution/tb_logs/*
 *.so
 *_pycache_*

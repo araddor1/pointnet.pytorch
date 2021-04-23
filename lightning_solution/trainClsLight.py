@@ -11,6 +11,7 @@ from lightning_solution.model import PointNetCls, feature_transform_regularizer
 import torch.nn.functional as F
 import pytorch_lightning as pl
 from tqdm import tqdm
+from pytorch_lightning.loggers import TensorBoardLogger
 
 def train():
     from utils.show3d_balls import showpoints
@@ -18,7 +19,7 @@ def train():
     parser.add_argument(
         '--batchSize', type=int, default=32, help='input batch size')
     parser.add_argument(
-        '--num_points', type=int, default=2000, help='input batch size')
+        '--num_points', type=int, default=10, help='input batch size')
     parser.add_argument(
         '--workers', type=int, help='number of data loading workers', default=4)
     parser.add_argument(
@@ -89,10 +90,12 @@ def train():
     except OSError:
         pass
 
+    logger = TensorBoardLogger('tb_logs', name='ClsModel')
     show_func = showpoints if opt.show !=0 else None
     model = PointNetCls(k=num_classes,feature_transform=feature_transform_regularizer,show_points_func=show_func)
-    trainer =  pl.Trainer(gpus=1)
+    trainer =  pl.Trainer(gpus=1,logger=logger, max_epochs= opt.nepoch)
     trainer.fit(model,dataloader,testdataloader)
+
 
 
 if __name__ == "__main__":
