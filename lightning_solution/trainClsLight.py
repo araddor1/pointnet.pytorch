@@ -94,7 +94,8 @@ def train():
     show_func = showpoints if opt.show !=0 else None
     model = PointNetCls(k=num_classes,feature_transform=feature_transform_regularizer,show_points_func=show_func)
     trainer =  pl.Trainer(gpus=1,logger=logger, max_epochs= opt.nepoch)
-    trainer.fit(model,dataloader,testdataloader)
+    trainer.fit(model,dataloader)
+    trainer.test(test_dataloaders=testdataloader)
 
 
 
