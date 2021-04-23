@@ -7,7 +7,7 @@ import torch.nn.parallel
 import torch.optim as optim
 import torch.utils.data
 from pointnet.dataset import ShapeNetDataset, ModelNetDataset
-from lighting_solution.model import PointNetCls, feature_transform_regularizer
+from lightning_solution.model import PointNetCls, feature_transform_regularizer
 import torch.nn.functional as F
 import pytorch_lightning as pl
 from tqdm import tqdm
@@ -18,7 +18,7 @@ def train():
     parser.add_argument(
         '--batchSize', type=int, default=32, help='input batch size')
     parser.add_argument(
-        '--num_points', type=int, default=100, help='input batch size')
+        '--num_points', type=int, default=2000, help='input batch size')
     parser.add_argument(
         '--workers', type=int, help='number of data loading workers', default=4)
     parser.add_argument(
@@ -28,6 +28,8 @@ def train():
     parser.add_argument('--dataset', type=str, required=True, help="dataset path")
     parser.add_argument('--dataset_type', type=str, default='shapenet', help="dataset type shapenet|modelnet40")
     parser.add_argument('--feature_transform', action='store_true', help="use feature transform")
+    parser.add_argument(
+        '--show', type=int, default=0, help="show 3d models every <> inputs")
 
     opt = parser.parse_args()
     print(opt)
@@ -87,7 +89,8 @@ def train():
     except OSError:
         pass
 
-    model = PointNetCls(k=num_classes,feature_transform=feature_transform_regularizer,show_points_func=showpoints)
+    show_func = showpoints if opt.show !=0 else None
+    model = PointNetCls(k=num_classes,feature_transform=feature_transform_regularizer,show_points_func=show_func)
     trainer =  pl.Trainer(gpus=1)
     trainer.fit(model,dataloader,testdataloader)
 

@@ -1,1 +1,1 @@
-python trainClsLight.py --dataset ../shapenetcore_partanno_segmentation_benchmark_v0/  --nepoc=1  --dataset_type  shapenet
+python trainClsLight.py --dataset ../dataset  --nepoc=1  --dataset_type  shapenet

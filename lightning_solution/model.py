@@ -176,7 +176,7 @@ class PointNetCls(pl.LightningModule):
     def training_step(self, batch, batch_idx):
         points, target = batch
         target = target[:, 0]
-        if(batch_idx % 20 == 0):
+        if(self.show_points_func is not None and batch_idx % 20 == 0):
             self.show_points_func(points[0].cpu().numpy())
         points = points.transpose(2, 1)
         pred, trans, trans_feat = self(points)
@@ -192,7 +192,7 @@ class PointNetCls(pl.LightningModule):
         target = target[:, 0]
         points = points.transpose(2, 1)
         points, target = points, target
-        pred, _, _ = classifier(points)
+        pred, _, _ = self.forward(points)
         pred_choice = pred.data.max(1)[1]
         correct = pred_choice.eq(target.data).sum()
         total_correct += correct.item()
