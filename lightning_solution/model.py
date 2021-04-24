@@ -61,7 +61,7 @@ class PointNetCls(pl.LightningModule):
         pred, _, _ = self.forward(points)
         pred_choice = pred.data.max(1)[1]
         correct = pred_choice.eq(target.data).sum()
-        acc =  correct / len(batch)
+        acc =  correct / len(points)
         loss = 1 - acc
         self.log('test_loss', loss)
         return loss
