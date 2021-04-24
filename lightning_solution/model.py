@@ -12,6 +12,60 @@ from torch.autograd import Variable
 import numpy as np
 import torch.nn.functional as F
 
+
+#### main NET
+class PointNetCls(pl.LightningModule):
+    def __init__(self, k=2, feature_transform=None,show_points_func=None):
+        super(PointNetCls, self).__init__()
+        self.feature_transform = feature_transform
+        self.feat = PointNetfeat(global_feat=True, feature_transform=feature_transform)
+        self.fc1 = nn.Linear(1024, 512)
+        self.fc2 = nn.Linear(512, 256)
+        self.fc3 = nn.Linear(256, k)
+        self.dropout = nn.Dropout(p=0.3)
+        self.bn1 = nn.BatchNorm1d(512)
+        self.bn2 = nn.BatchNorm1d(256)
+        self.relu = nn.ReLU()
+        self.show_points_func = show_points_func
+
+    def forward(self, x):
+        x, trans, trans_feat = self.feat(x)
+        x = F.relu(self.bn1(self.fc1(x)))
+        x = F.relu(self.bn2(self.dropout(self.fc2(x))))
+        x = self.fc3(x)
+        return F.log_softmax(x, dim=1), trans, trans_feat
+
+    def configure_optimizers(self):
+        optimizer = torch.optim.Adam(self.parameters(), lr=0.001, betas=(0.9, 0.999))
+        scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=20, gamma=0.5)
+        return [optimizer] , [scheduler]
+
+    def training_step(self, batch, batch_idx):
+        points, target = batch
+        target = target[:, 0]
+        if(self.show_points_func is not None and batch_idx % 20 == 0):
+            self.show_points_func(points[0].cpu().numpy())
+        points = points.transpose(2, 1)
+        pred, trans, trans_feat = self(points)
+        loss = F.nll_loss(pred, target)
+        if self.feature_transform is not None:
+            loss += self.feature_transform(trans_feat) * 0.001
+        self.log('train_loss', loss)
+        return loss
+
+    def test_step(self, batch, batch_idx):
+        points, target = batch
+        target = target[:, 0]
+        points = points.transpose(2, 1)
+        pred, _, _ = self.forward(points)
+        pred_choice = pred.data.max(1)[1]
+        correct = pred_choice.eq(target.data).sum()
+        acc =  correct / len(batch)
+        loss = 1 - acc
+        self.log('test_loss', loss)
+        return loss
+
+
 class STN3d(pl.LightningModule):
     def __init__(self):
         super(STN3d, self).__init__()
@@ -48,11 +102,6 @@ class STN3d(pl.LightningModule):
         x = x + iden
         x = x.view(-1, 3, 3)
         return x
-    
-    def configure_optimizers(self):
-        optimizer = optim.Adam(classifier.parameters(), lr=0.001, betas=(0.9, 0.999))
-        scheduler = optim.lr_scheduler.StepLR(optimizer, step_size=20, gamma=0.5)
-        return optimizer ,scheduler
 
 
 class STNkd(pl.LightningModule):
@@ -92,11 +141,6 @@ class STNkd(pl.LightningModule):
         x = x + iden
         x = x.view(-1, self.k, self.k)
         return x
-
-    def configure_optimizers(self):
-        optimizer = optim.Adam(classifier.parameters(), lr=0.001, betas=(0.9, 0.999))
-        scheduler = optim.lr_scheduler.StepLR(optimizer, step_size=20, gamma=0.5)
-        return optimizer ,scheduler
 
 class PointNetfeat(pl.LightningModule):
     def __init__(self, global_feat = True, feature_transform = False):
@@ -140,68 +184,6 @@ class PointNetfeat(pl.LightningModule):
             x = x.view(-1, 1024, 1).repeat(1, 1, n_pts)
             return torch.cat([x, pointfeat], 1), trans, trans_feat
     
-    def configure_optimizers(self):
-        optimizer = optim.Adam(classifier.parameters(), lr=0.001, betas=(0.9, 0.999))
-        scheduler = optim.lr_scheduler.StepLR(optimizer, step_size=20, gamma=0.5)
-        return optimizer ,scheduler
-
-#### main NET
-class PointNetCls(pl.LightningModule):
-    def __init__(self, k=2, feature_transform=None,show_points_func=None):
-        super(PointNetCls, self).__init__()
-        self.feature_transform = feature_transform
-        self.feat = PointNetfeat(global_feat=True, feature_transform=feature_transform)
-        self.fc1 = nn.Linear(1024, 512)
-        self.fc2 = nn.Linear(512, 256)
-        self.fc3 = nn.Linear(256, k)
-        self.dropout = nn.Dropout(p=0.3)
-        self.bn1 = nn.BatchNorm1d(512)
-        self.bn2 = nn.BatchNorm1d(256)
-        self.relu = nn.ReLU()
-        self.show_points_func = show_points_func
-
-    def forward(self, x):
-        x, trans, trans_feat = self.feat(x)
-        x = F.relu(self.bn1(self.fc1(x)))
-        x = F.relu(self.bn2(self.dropout(self.fc2(x))))
-        x = self.fc3(x)
-        return F.log_softmax(x, dim=1), trans, trans_feat
-
-    def configure_optimizers(self):
-        optimizer = torch.optim.Adam(self.parameters(), lr=0.001, betas=(0.9, 0.999))
-        scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=20, gamma=0.5)
-        return [optimizer] , [scheduler]
-
-
-    def training_step(self, batch, batch_idx):
-        
-        points, target = batch
-        target = target[:, 0]
-        if(self.show_points_func is not None and batch_idx % 20 == 0):
-            self.show_points_func(points[0].cpu().numpy())
-        points = points.transpose(2, 1)
-        pred, trans, trans_feat = self(points)
-        loss = F.nll_loss(pred, target)
-        if self.feature_transform is not None:
-            loss += self.feature_transform(trans_feat) * 0.001
-        self.log('train_loss', loss)
-        return loss
-
-    def test_step(self, batch, batch_idx):
-        total_correct = 0
-        total_testset = 0
-        points, target = batch
-        target = target[:, 0]
-        points = points.transpose(2, 1)
-        points, target = points, target
-        pred, _, _ = self.forward(points)
-        pred_choice = pred.data.max(1)[1]
-        correct = pred_choice.eq(target.data).sum()
-        total_correct += correct.item()
-        total_testset += points.size()[0]
-        loss = 1 -  total_correct / float(total_testset)
-        self.log('test_loss', loss)
-        return loss
 
 
 
@@ -233,10 +215,6 @@ class PointNetDenseCls(pl.LightningModule):
         x = x.view(batchsize, n_pts, self.k)
         return x, trans, trans_feat
     
-    def configure_optimizers(self):
-        optimizer = optim.Adam(classifier.parameters(), lr=0.001, betas=(0.9, 0.999))
-        scheduler = optim.lr_scheduler.StepLR(optimizer, step_size=20, gamma=0.5)
-        return optimizer ,scheduler
 
 
 def feature_transform_regularizer(trans):

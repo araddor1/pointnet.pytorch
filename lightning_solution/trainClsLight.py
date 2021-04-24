@@ -19,18 +19,20 @@ def train():
     parser.add_argument(
         '--batchSize', type=int, default=32, help='input batch size')
     parser.add_argument(
-        '--num_points', type=int, default=10, help='input batch size')
+        '--num_points', type=int, default=2, help='input batch size')
     parser.add_argument(
         '--workers', type=int, help='number of data loading workers', default=4)
     parser.add_argument(
         '--nepoch', type=int, default=250, help='number of epochs to train for')
-    parser.add_argument('--outf', type=str, default='cls', help='output folder')
-    parser.add_argument('--model', type=str, default='', help='model path')
+    parser.add_argument('--outf', type=str, default='cls', help='output folder') ##TODO see if we want to include it
+    parser.add_argument('--model', type=str, default='', help='model path')  ##TODO see if we want to include it
     parser.add_argument('--dataset', type=str, required=True, help="dataset path")
     parser.add_argument('--dataset_type', type=str, default='shapenet', help="dataset type shapenet|modelnet40")
     parser.add_argument('--feature_transform', action='store_true', help="use feature transform")
     parser.add_argument(
         '--show', type=int, default=0, help="show 3d models every <> inputs")
+    parser.add_argument(
+        '--pretrain', type=str, default='', help="pretrained dir to laod model from (skip training)")
 
     opt = parser.parse_args()
     print(opt)
@@ -92,11 +94,18 @@ def train():
 
     logger = TensorBoardLogger('tb_logs', name='ClsModel')
     show_func = showpoints if opt.show !=0 else None
-    model = PointNetCls(k=num_classes,feature_transform=feature_transform_regularizer,show_points_func=show_func)
-    trainer =  pl.Trainer(gpus=1,logger=logger, max_epochs= opt.nepoch)
-    trainer.fit(model,dataloader)
+    trainer = pl.Trainer(gpus=1,logger=logger, max_epochs= opt.nepoch)
+    if opt.pretrain == "":
+        print("training new model")
+        model = PointNetCls(k=num_classes,feature_transform=feature_transform_regularizer,show_points_func=show_func)
+        trainer.fit(model,dataloader)
+    elif os.path.exists(opt.pretrain):
+        print("loading existing model from ",opt.pretrain)
+        model = PointNetCls.load_from_checkpoint(opt.pretrain)
+    else:
+        print("ERROR!")
+        return
     trainer.test(test_dataloaders=testdataloader)
-
 
 
 if __name__ == "__main__":
