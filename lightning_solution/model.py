@@ -17,6 +17,7 @@ import torch.nn.functional as F
 class PointNetCls(pl.LightningModule):
     def __init__(self, k=2, feature_transform=None,show_points_func=None):
         super(PointNetCls, self).__init__()
+        self.save_hyperparameters()
         self.feature_transform = feature_transform
         self.feat = PointNetfeat(global_feat=True, feature_transform=feature_transform)
         self.fc1 = nn.Linear(1024, 512)

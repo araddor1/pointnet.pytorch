@@ -102,10 +102,12 @@ def train():
     elif os.path.exists(opt.pretrain):
         print("loading existing model from ",opt.pretrain)
         model = PointNetCls.load_from_checkpoint(opt.pretrain)
+        trainer = pl.Trainer(gpus=1 )
     else:
         print("ERROR!")
         return
-    trainer.test(test_dataloaders=testdataloader)
+    
+    trainer.test(model,test_dataloaders=testdataloader)
 
 
 if __name__ == "__main__":
